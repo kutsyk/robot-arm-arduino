@@ -6,9 +6,9 @@
 #define SW_PIN 16
 
 AF_DCMotor motor_1(1);
-// AF_DCMotor motor_2(2);
-// AF_DCMotor motor_3(3);
-// AF_DCMotor motor_4(4);
+AF_DCMotor motor_2(2);
+AF_DCMotor motor_3(3);
+AF_DCMotor motor_4(4);
 
 ezButton button(SW_PIN);
 
@@ -16,12 +16,10 @@ int xValue = 0;  // To store value of the X axis
 int yValue = 0;  // To store value of the Y axis
 int bValue = 0;  // To store value of the button
 int deadzone = 150;
-int levelCеуontrol = 1; // which motors to controll if (1) M1 and M2, if (-1) M3 and M4
+int levelControl = 1; // which motors to controll if (1) M1 and M2, if (-1) M3 and M4
 
 int xNeutral;
 int yNeutral;
-int xCenter;
-int yCenter;
 
 void setup() {
   Serial.begin(9600);
@@ -30,8 +28,6 @@ void setup() {
 
   xNeutral = analogRead(VRX_PIN);
   yNeutral = analogRead(VRY_PIN);
-  xCenter = xNeutral + deadzone;
-  yCenter = yNeutral + deadzone;
   Serial.print(xNeutral);
   Serial.print(yNeutral);
   // motor_1.setSpeed(150);
@@ -52,6 +48,7 @@ void loop() {
 
   if (button.isPressed()) {
     // Serial.println("INFO: Level control changed");
+    stopAllMotors();
   }
   if (button.isReleased()) {
     // Serial.println("Control M3 - Y and M4 - X");
@@ -60,29 +57,16 @@ void loop() {
 
   if (levelControl == 1) {
     // Serial.println("Control M1 - Y and M2 - X");
+    moveMotorsIfNeeded(xValue, yValue, motor_1, motor_2);
   } else {
     // Serial.println("Control M3 - Y and M4 - X");
+    moveMotorsIfNeeded(xValue, yValue, motor_3, motor_4);
   }
 
   // Serial.println(xNeutral);
   // Serial.println(yNeutral);
-  if (xValue >= xNeutral + deadzone) {
-    moveMotor("LEFT", MLR);
-  } else if (xValue <= xNeutral - deadzone) {
-    moveMotor("RIGHT", MLR);
-  } else {
-    moveMotor("center", MLR);
-  }
-
-  if (yValue >= yNeutral + deadzone) {
-    moveMotor("DOWN", mUD);
-  } else if (yValue <= yValue - deadzone) {
-    moveMotor("UP", mUD);
-  } else {
-    moveMotor("center", mUD);
-  }
-
   // print data to Serial Monitor on Arduino IDE
+
   // // if (c++ % 100 == 0) {
   // Serial.print("x = ");
   // Serial.println(xValue);
@@ -93,21 +77,33 @@ void loop() {
   // }
 }
 
-void moveMotorsIfNeeded(xValue, AF_DCMotor mLR, AF_DCMotor mUD) {
+void moveMotorsIfNeeded(int xValue, int yValue, AF_DCMotor mLR, AF_DCMotor mUD) {
+  int mUDSpeed = map(yValue, 0, 1023, 0, 255);
+  int mLRSpeed = map(xValue, 0, 1023, 0, 255);
+
+  mUD.setSpeed(mUDSpeed);
+  mLR.setSpeed(mUDSpeed);
+
   if (xValue >= xNeutral + deadzone) {
-    moveMotor("LEFT", MLR);
+    moveMotor("LEFT", mLR);
+    mLR.run(FORWARD);
   } else if (xValue <= xNeutral - deadzone) {
     moveMotor("RIGHT", mLR);
+    mLR.run(BACKWARD);
   } else {
-    moveMotor("center", mLR);
+    moveMotor("stop", mLR);
+    mLR.run(RELEASE);
   }
 
   if (yValue >= yNeutral + deadzone) {
     moveMotor("DOWN", mUD);
+    mUD.run(BACKWARD);
   } else if (yValue <= yValue - deadzone) {
     moveMotor("UP", mUD);
+    mUD.run(FORWARD);
   } else {
-    moveMotor("center", mUD);
+    moveMotor("stop", mLR);
+    mUD.run(RELEASE);
   }
 }
 
@@ -131,10 +127,10 @@ void moveMotor(String side, AF_DCMotor m) {
 //   motor_4.run(BACKWARD);
 // }
 
-// void stopArm() {
-//   // Stop all motors
-//   motor_1.run(RELEASE);
-//   motor_2.run(RELEASE);
-//   motor_3.run(RELEASE);
-//   motor_4.run(RELEASE);
-// }
+void stopAllMotors() {
+  // Stop all motors
+  motor_1.run(RELEASE);
+  motor_2.run(RELEASE);
+  motor_3.run(RELEASE);
+  motor_4.run(RELEASE);
+}
